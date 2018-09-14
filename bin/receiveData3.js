@@ -5,8 +5,14 @@ var destination = '/topic/myTopic';
 var destination2 = '/topic/youTopic';
 var client = new Stomp('127.0.0.1', 61613, 'user', 'pass');
 
-var clientList = [];//保存多个客户端的数组
+// var HOST = '172.18.216.34';//正式服
+var HOST = '172.24.127.99';//测试服
+// var HOST = '127.0.0.1';
+var PORT = 10917;
 
+var allBody;
+
+var clientList = [];//保存多个客户端的数组
 //-----------------------map-start--------------------------
 function Map() {
     this.elements = new Array();
@@ -138,14 +144,26 @@ function Map() {
 
 //-----------------------map-end--------------------------
 
+//-----------------------date-start----------------------
+function getNowFormatDate() {
+    var date = new Date();
+    var seperator1 = "-";
+    var seperator2 = ":";
+    var month = date.getMonth() + 1;
+    var strDate = date.getDate();
+    if (month >= 1 && month <= 9) {
+        month = "0" + month;
+    }
+    if (strDate >= 0 && strDate <= 9) {
+        strDate = "0" + strDate;
+    }
+    var currentdate = date.getFullYear() + seperator1 + month + seperator1 + strDate
+        + " " + date.getHours() + seperator2 + date.getMinutes()
+        + seperator2 + date.getSeconds();
+    return currentdate;
+}
+//-----------------------date-end------------------------
 var map = new Map();
-
-// var HOST = '172.18.216.34';//正式服
-var HOST = '172.24.127.99';//测试服
-// var HOST = '127.0.0.1';
-var PORT = 10917;
-
-var allBody;
 
 client.connect(function (sessionId) {
     client.subscribe(destination, function (body, headers) {
@@ -155,40 +173,41 @@ client.connect(function (sessionId) {
 });
 
 net.createServer(function (sock) {
-
     try {
+        sock.on('connect',function(){
+            console.log("成功建立socket连接！！！！！");
+        });
+
         clientList.push(sock);
 
         sock.on('data', function (data) {
             broadcast(data, sock);
         });
 
-        sock.on('close', function (data) {
-            console.log('CLOSED: ' +
+        sock.on('close', function () {
+            sock.end();
+            console.log('客户端程序关闭！！！！！！！CLOSED: ' +
                 sock.remoteAddress + ' ' + sock.remotePort);
         });
 
         //异常处理
-        sock.on('error', function (err) {
-            console.error("出现错误：" + err);
-            // debug("出现错误：" + err);
+        sock.on('error', function () {
+            console.error("发生错误！！！！！！！！！：" );
         });
 
         //监听客户端终止
         sock.on('end', function () {
-            console.log('' + sock.name + 'quit');//如果某个客户端断开连接，node控制台就会打印出来
-            // debug('' + sock.name + 'quit');//如果某个客户端断开连接，node控制台就会打印出来
+            console.log('有客户机下线了！！！！！！！：' + sock.name + 'quit');//如果某个客户端断开连接，node控制台就会打印出来
             clientList.splice(clientList.indexOf(sock), 1);
         });
     } catch (e) {
-        // debug('\r\n', e, '\r\n', e.stack);
-        console.log();
+        console.log(e);
     }
 }).listen(PORT, HOST);
 
 function broadcast(data, sock) {
     try {
-        var gatewayMessage = new Buffer(data, 'hex').toString('hex');//这是客户端发来的报文
+        var gatewayMessage = new Buffer(data, 'hex').toString('hex');//这是网关发来的报文
         var gatewayId = gatewayMessage.substring(8, 24);//网关id
         var gatewayCode = new Buffer(gatewayId, "hex").toString("utf-8");//网关id
         var packageType = gatewayMessage.substring(6, 8);//数据包类型
@@ -212,6 +231,7 @@ function broadcast(data, sock) {
         console.log('CONNECTED: ' +
             sock.remoteAddress + ':' + sock.remotePort);
         console.log('DATA ' + sock.remoteAddress + ': ' + gatewayMessage);
+        console.log('Date:'+ getNowFormatDate());
 
         if (packageType == "01") { //当数据包类型为 0x01时代表注册操作
             map.put(gatewayCode, sock);
@@ -280,6 +300,7 @@ function broadcast(data, sock) {
         if (packageType == "10") {
             var chairSuccess = gatewayMessage.substring(24, 26);//椅子操作后返回的类型
             var chairCode = gatewayMessage.substring(8, 24);//16进制椅子编号
+            var returnMsg = new Buffer(gatewayMessage, "hex").toString("utf-8");
             var chairCodeAsc = new Buffer(chairCode, "hex").toString("utf-8");//ascii椅子编号
             if (chairSuccess == "01") {
                 console.log(sock.remoteAddress + ':' + sock.remotePort + "------" + chairCodeAsc + "停止成功");
@@ -287,8 +308,8 @@ function broadcast(data, sock) {
                 console.log(sock.remoteAddress + ':' + sock.remotePort + "------" + chairCodeAsc + "指令错误");
             } else {
                 console.log(sock.remoteAddress + ':' + sock.remotePort + "------" + chairCodeAsc + "未响应");
-                client.publish(destination2, chairCodeAsc);//如果未响应，返回给web
             }
+            client.publish(destination2, returnMsg);//如果未响应，返回给web
             allBody = "";
         }
 
