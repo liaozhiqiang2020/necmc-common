@@ -5,8 +5,8 @@ var destination = '/topic/myTopic';
 var destination2 = '/topic/youTopic';
 var client = new Stomp('127.0.0.1', 61613, 'user', 'pass');
 
-// var HOST = '172.18.216.34';//正式服
-var HOST = '172.24.127.99';//测试服
+var HOST = '172.18.216.34';//正式服
+// var HOST = '172.24.127.99';//测试服
 // var HOST = '127.0.0.1';
 var PORT = 10917;
 
@@ -201,8 +201,11 @@ net.createServer(function (sock) {
         });
 
         //异常处理
-        sock.on('error', function () {
-            console.error("发生错误！！！！！！！！！：" );
+        sock.on('error', function (err) {
+            console.error("发生错误！！！！！！！！！：" +err);
+            // sock.end();
+            // sock.destroy();
+            // addressMap.remove(sock);
         });
 
         //监听客户端终止
@@ -326,7 +329,8 @@ function broadcast(data, sock) {
         }
 
         if (packageType == "03") {
-            var chairSuccess = gatewayMessage.substring(8, 10);//椅子操作后返回的类型
+            var chairSuccess = gatewayMessage.substring(8, 10);//椅子操作后返回的类型\
+            var port = gatewayMessage.substring(48,52);
             var returnMsg = new Buffer(gatewayMessage, "hex").toString("utf-8");
 
             if (chairSuccess == "01") {
@@ -351,7 +355,7 @@ function broadcast(data, sock) {
         }
 
         if (packageType == "05") {
-            var chairSuccess = gatewayMessage.substring(8, 10);//椅子操作后返回的类型
+            var chairSuccess = gatewayMessage.substring(8, 10);//网关操作后返回的类型
             var returnMsg = new Buffer(gatewayMessage, "hex").toString("utf-8");
             if (chairSuccess == "01") {
                 console.log(sock.remoteAddress + ':' + sock.remotePort + "------" + "网关重启成功");
@@ -569,6 +573,7 @@ function broadcast(data, sock) {
                 var endChair = new Buffer(type2, "hex");//转为ascii码
                 try {
                     var sockon = map.get(gatewaycode);
+
                     if (sockon != "" && sockon != undefined) {
                         if (type == "03") {
                             sockon.write(endChair);
@@ -583,6 +588,7 @@ function broadcast(data, sock) {
                         }
 
                         if (type == "05") {
+                            // var controlMsg = type2.split("-")[0];
                             sockon.write(endChair);
                             console.log("重启网关：-----------");
                             return allBody = "";
@@ -664,7 +670,7 @@ function broadcast(data, sock) {
 
                         }
                     }else{
-                        console.log("网关与设备通信异常111！！！！！");
+                        console.log("命令中没有包含网关SN！！！！！！！！");
                         client.publish(destination2, "ff"+chairCodeAsc);//如果未响应，返回给web
                         return allBody = "";
                     }
