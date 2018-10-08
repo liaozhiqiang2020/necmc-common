@@ -203,6 +203,8 @@ net.createServer(function (sock) {
         //异常处理
         sock.on('error', function (err) {
             console.error("发生错误！！！！！！！！！：" +err);
+            map.get(sock);
+            addressMap.put(map.get(sock),sock);
             // sock.end();
             // sock.destroy();
             // addressMap.remove(sock);
@@ -225,6 +227,7 @@ net.createServer(function (sock) {
             console.log('客户端已断开连接...');
             sock.end();
             sock.destroy();
+            map.remove(addressMap.get(sock));
             addressMap.remove(sock);
             // clientList.splice(clientList.indexOf(sock), 1);
         });
@@ -241,23 +244,25 @@ function broadcast(data, sock) {
         var gatewayCode = new Buffer(gatewayId, "hex").toString("utf-8");//网关id
         var packageType = gatewayMessage.substring(6, 8);//数据包类型
 
-        var sockon2 = map.get(gatewayCode);//从map中获取网关信息
+        // var sockon2 = map.get(gatewayCode);//从map中获取网关信息
 
-        var cleanup = [];
-        for (var i = 0; i < clientList.length; i += 1) {
-            if (sockon2 !== clientList[i]) {
-                console.log("正常");
-            } else {
-                console.log("不正常");
-                cleanup.push(sockon2); // 如果不可写，收集起来销毁。销毁之前要 Socket.destroy() 用 API 的方法销毁。
-                map.remove(gatewayCode);
-                addressMap.remove(sockon2);
-                sockon2.destroy();
-            }
-        }
-        for (i = 0; i < cleanup.length; i += 1) {
-            clientList.splice(clientList.indexOf(cleanup[i]), 1)
-        }
+        // var cleanup = [];
+        // for (var i = 0; i < clientList.length; i += 1) {
+        //     if (sockon2 !== clientList[i]) {
+        //         console.log("正常");
+        //         map.put(gatewayCode, sock);
+        //         addressMap.put(sock,gatewayCode);
+        //     } else {
+        //         console.log("不正常");
+        //         cleanup.push(sockon2); // 如果不可写，收集起来销毁。销毁之前要 Socket.destroy() 用 API 的方法销毁。
+        //         map.remove(gatewayCode);
+        //         addressMap.remove(sockon2);
+        //         sockon2.destroy();
+        //     }
+        // }
+        // for (i = 0; i < cleanup.length; i += 1) {
+        //     clientList.splice(clientList.indexOf(cleanup[i]), 1)
+        // }
 
         console.log('CONNECTED: ' +
             sock.remoteAddress + ':' + sock.remotePort);
@@ -265,8 +270,16 @@ function broadcast(data, sock) {
         console.log('Date:'+ getNowFormatDate());
 
         if (packageType == "01") { //当数据包类型为 0x01时代表注册操作
+
+            console.log(map.get(gatewayCode));
+
+
+            addressMap.remove(map.get(gatewayCode));
+            map.remove(gatewayCode);
+
             map.put(gatewayCode, sock);
             addressMap.put(sock,gatewayCode);
+            // console.log(map.get(gatewayCode));
             console.log("网关ID：十六进制：" + gatewayId + "，ASCII：" + new Buffer(gatewayId, "hex").toString("utf-8"));
             var returnData = new Buffer('faaf06010000', 'hex');
             sock.write(returnData);//返回给客户端（网关）数据
@@ -552,10 +565,10 @@ function broadcast(data, sock) {
             allBody = "";
         }
 
-        /*删除掉服务器的客户端数组中，已断开的客户端*/
-        for (var i = 0; i < cleanup.length; i++) {
-            clientList.splice(clientList.indexOf(cleanup[i]), 1);
-        }
+        // /*删除掉服务器的客户端数组中，已断开的客户端*/
+        // for (var i = 0; i < cleanup.length; i++) {
+        //     clientList.splice(clientList.indexOf(cleanup[i]), 1);
+        // }
     } catch (e) {
         console.log();
     }
@@ -681,6 +694,6 @@ function broadcast(data, sock) {
                 }
             }
         }
-        , 500
+        , 100
     );
 }
