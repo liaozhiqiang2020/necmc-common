@@ -271,7 +271,7 @@ function broadcast(data, sock) {
 
         if (packageType == "01") { //当数据包类型为 0x01时代表注册操作
 
-            console.log(map.get(gatewayCode));
+            // console.log(map.get(gatewayCode));
 
 
             addressMap.remove(map.get(gatewayCode));
