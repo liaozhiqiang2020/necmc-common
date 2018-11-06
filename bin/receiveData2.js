@@ -167,6 +167,7 @@ function getNowFormatDate() {
 //-----------------------date-end------------------------
 
 //-----------------------showClients-start--------------------------------
+//显示所有在线的网关
 function showClients(){
     console.log('【当前在线网关】：');
     for(var p=0;p<clientList.length;p++) {
@@ -177,6 +178,7 @@ function showClients(){
 var map = new Map();
 var addressMap = new Map();
 
+//连接active'mq，监听端口，如果有消息发过来，就放入allBody'中
 client.connect(function (sessionId) {
     client.subscribe(destination, function (body, headers) {
         console.log('From MQ:', body);
@@ -184,19 +186,20 @@ client.connect(function (sessionId) {
     });
 });
 
+//连接网关
 net.createServer(function (sock) {
     try {
         sock.name = '网关' + (++p);
 
-        clientList.push(sock);
+        clientList.push(sock); //把当前连接放入list中
 
-        showClients();
+        showClients();//显示当前在线网关
 
-        sock.on('data', function (data) {
+        sock.on('data', function (data) {  //连接网关后进行操作
             broadcast(data, sock);
         });
 
-        sock.on('close', function () {
+        sock.on('close', function () {    //断开连接
             console.log(sock.remoteAddress + ' ' + sock.remotePort+'——————————此网关已关闭！！！！！！！: ');
         });
 
@@ -274,11 +277,11 @@ function broadcast(data, sock) {
             // console.log(map.get(gatewayCode));
 
 
-            addressMap.remove(map.get(gatewayCode));
-            map.remove(gatewayCode);
+            addressMap.remove(map.get(gatewayCode)); //移除当前网关上一个连接（已断开或超时的连接）
+            map.remove(gatewayCode); //移除当前网关上一个连接（已断开或超时的连接）
 
-            map.put(gatewayCode, sock);
-            addressMap.put(sock,gatewayCode);
+            map.put(gatewayCode, sock);//重新放入网关信息
+            addressMap.put(sock,gatewayCode);//重新放入网关信息
             // console.log(map.get(gatewayCode));
             console.log("网关ID：十六进制：" + gatewayId + "，ASCII：" + new Buffer(gatewayId, "hex").toString("utf-8"));
             var returnData = new Buffer('faaf06010000', 'hex');
@@ -287,14 +290,14 @@ function broadcast(data, sock) {
         if (packageType == "06") { //当数据包类型为 0x06时代表返回心跳
             console.log("收到网关心跳，返回确认信息");
 
-            var chairList1 = gatewayMessage.substring(10,12);//数据包类型
-            var chairList2 = gatewayMessage.substring(12,14);
-            var chairList3 = gatewayMessage.substring(14,16);
-            var chairList4 = gatewayMessage.substring(16,18);
-            var chairList5 = gatewayMessage.substring(18,20);
-            var chairList6 = gatewayMessage.substring(20,22);
-            var chairList7 = gatewayMessage.substring(22,24);
-            var chairList8 = gatewayMessage.substring(24,26);
+            var chairList1 = gatewayMessage.substring(10,12);//数据包类型(心跳包中一个字节占8位，截取第一个字节)
+            var chairList2 = gatewayMessage.substring(12,14);//截取第二个字节
+            var chairList3 = gatewayMessage.substring(14,16);//截取第三个字节
+            var chairList4 = gatewayMessage.substring(16,18);//截取第四个字节
+            var chairList5 = gatewayMessage.substring(18,20);//截取第五个字节
+            var chairList6 = gatewayMessage.substring(20,22);//截取第六个字节
+            var chairList7 = gatewayMessage.substring(22,24);//截取第七个字节
+            var chairList8 = gatewayMessage.substring(24,26);//截取第八个字节
 
             chairList1 = parseInt(chairList1,16).toString(2);//16进制转为2进制
             chairList2 = parseInt(chairList2,16).toString(2);
@@ -305,19 +308,19 @@ function broadcast(data, sock) {
             chairList7 = parseInt(chairList7,16).toString(2);
             chairList8 = parseInt(chairList8,16).toString(2);
 
-            var chairLists = [chairList1,chairList2,chairList3,chairList4,chairList5,chairList6,chairList7,chairList8];
+            var chairLists = [chairList1,chairList2,chairList3,chairList4,chairList5,chairList6,chairList7,chairList8];//放在一个list中
             var newChairList="";
 
-            for(var a = 0;a<chairLists.length;a++){
+            for(var a = 0;a<chairLists.length;a++){  //遍历list
                 var chairList = chairLists[a];
 
                 for(var b = 0;b<9;b++){
-                    if(chairList.length<8){
+                    if(chairList.length<8){      //每一位占八个字节，转换后如果不够八个字节，前面补0
                         chairList = "0"+chairList;
                     }
                 }
                 // console.log(chairList);
-                String.prototype.reverse = function(){  //反转字符串
+                String.prototype.reverse = function(){  //反转字符串(转换后的字节前后颠倒，才是需要的正确的字符串)
                     var a = [];
                     for(var i=0;i<9;i++){
                         a.unshift(this[i]);
@@ -326,16 +329,16 @@ function broadcast(data, sock) {
                 };
                 // console.log(chairList.reverse());
 
-                newChairList = newChairList+chairList.reverse();
+                newChairList = newChairList+chairList.reverse(); //每一位转换后的字节点前后颠倒后拼接起来，就是需要的心跳包数据
             }
 
-            var gatewayCode = addressMap.get(sock);
+            var gatewayCode = addressMap.get(sock);  //获取网关编号
 
             // console.log(addressMap.get(sock));
 
             // console.log(newChairList+"_"+gatewayCode);
 
-            client.publish(destination2, newChairList+"_"+gatewayCode);
+            client.publish(destination2, newChairList+"_"+gatewayCode);//心跳包后边拼接网关编号，防止混淆
 
             var returnData = new Buffer('faaf06060000', 'hex');
             sock.write(returnData);//返回给网关数据
@@ -574,18 +577,18 @@ function broadcast(data, sock) {
     }
 
 
-    setInterval(function () {
-            if (allBody != undefined && allBody != "") {
-                var gatewaycode = allBody.split("_")[1];//网关sn
-                var type2 = allBody.split("_")[0];//控制命令
-                var type = type2.substring(6, 8);//数据包类型
-                var chairId = type2.substring(8,24);
+    setInterval(function () {  //监听activemq，每隔0.1s从allBody中获取一遍数据
+            if (allBody != undefined && allBody != "") {  //如果有消息，执行后续操作
+                var gatewaycode = allBody.split("_")[1];//获取网关sn
+                var type2 = allBody.split("_")[0];//获取控制命令
+                var type = type2.substring(6, 8);//获取数据包类型
+                var chairId = type2.substring(8,24);//获取按摩椅编号
                 // console.log(chairId);
                 var chairCodeAsc = new Buffer(chairId, "hex").toString("utf-8");//ascii椅子编号
                 // console.log(chairCodeAsc);
                 var endChair = new Buffer(type2, "hex");//转为ascii码
                 try {
-                    var sockon = map.get(gatewaycode);
+                    var sockon = map.get(gatewaycode);  //根据网关编号获取当前网关连接
 
                     if (sockon != "" && sockon != undefined) {
                         if (type == "03") {
