@@ -175,8 +175,8 @@ function showClients(){
     }
 }
 //-------------------------showClients-end-----------------------------
-var map = new Map();
-var addressMap = new Map();
+var map = new Map();//key为网关连接信息，value为网关编号
+var addressMap = new Map();//key为网关编号，value为网关连接信息
 
 //连接active'mq，监听端口，如果有消息发过来，就放入allBody'中
 client.connect(function (sessionId) {
@@ -206,8 +206,8 @@ net.createServer(function (sock) {
         //异常处理
         sock.on('error', function (err) {
             console.error("发生错误！！！！！！！！！：" +err);
-            map.get(sock);
-            addressMap.put(map.get(sock),sock);
+            map.get(sock);//获取网关编号
+            addressMap.put(map.get(sock),sock);//放入当前网关编号的连接信息
             // sock.end();
             // sock.destroy();
             // addressMap.remove(sock);
@@ -228,10 +228,10 @@ net.createServer(function (sock) {
         //监听到超时事件，断开连接
         sock.on('timeout', function() {
             console.log('客户端已断开连接...');
-            sock.end();
-            sock.destroy();
-            map.remove(addressMap.get(sock));
-            addressMap.remove(sock);
+            sock.end();//连接结束
+            sock.destroy();//销毁连接
+            map.remove(addressMap.get(sock));//从网关信息map中移除当前编号的网关
+            addressMap.remove(sock);//从网关编号map中移除当前连接
             // clientList.splice(clientList.indexOf(sock), 1);
         });
 
@@ -240,6 +240,7 @@ net.createServer(function (sock) {
     }
 }).listen(PORT, HOST);
 
+//连接网关后进行操作
 function broadcast(data, sock) {
     try {
         var gatewayMessage = new Buffer(data, 'hex').toString('hex');//这是网关发来的报文
@@ -344,7 +345,7 @@ function broadcast(data, sock) {
             sock.write(returnData);//返回给网关数据
         }
 
-        if (packageType == "03") {
+        if (packageType == "03") {  //修改网关端口
             var chairSuccess = gatewayMessage.substring(8, 10);//椅子操作后返回的类型\
             var port = gatewayMessage.substring(48,52);
             var returnMsg = new Buffer(gatewayMessage, "hex").toString("utf-8");
@@ -358,7 +359,7 @@ function broadcast(data, sock) {
             allBody = "";
         }
 
-        if (packageType == "04") {
+        if (packageType == "04") {//修改网关频道
             var chairSuccess = gatewayMessage.substring(8, 10);//椅子操作后返回的类型
             var returnMsg = new Buffer(gatewayMessage, "hex").toString("utf-8");
             if (chairSuccess == "01") {
@@ -370,7 +371,7 @@ function broadcast(data, sock) {
             allBody = "";
         }
 
-        if (packageType == "05") {
+        if (packageType == "05") {//重启网关
             var chairSuccess = gatewayMessage.substring(8, 10);//网关操作后返回的类型
             var returnMsg = new Buffer(gatewayMessage, "hex").toString("utf-8");
             if (chairSuccess == "01") {
@@ -382,7 +383,7 @@ function broadcast(data, sock) {
             allBody = "";
         }
 
-        if (packageType == "09") {
+        if (packageType == "09") {//启动按摩椅
             var chairSuccess = gatewayMessage.substring(24, 26);//椅子操作后返回的类型
             var chairCode = gatewayMessage.substring(8, 24);//16进制椅子编号
             var returnMsg = new Buffer(gatewayMessage, "hex").toString("utf-8");
@@ -397,7 +398,7 @@ function broadcast(data, sock) {
             client.publish(destination2, returnMsg);//如果未响应，返回给web
             allBody = "";
         }
-        if (packageType == "10") {
+        if (packageType == "10") {//停止按摩椅
             var chairSuccess = gatewayMessage.substring(24, 26);//椅子操作后返回的类型
             var chairCode = gatewayMessage.substring(8, 24);//16进制椅子编号
             var returnMsg = new Buffer(gatewayMessage, "hex").toString("utf-8");
@@ -413,7 +414,7 @@ function broadcast(data, sock) {
             allBody = "";
         }
 
-        if (packageType == "13") {
+        if (packageType == "13") {//开启充电
             var chairSuccess = gatewayMessage.substring(24, 26);//椅子操作后返回的类型
             var chairCode = gatewayMessage.substring(8, 24);//16进制椅子编号
             var chairCodeAsc = new Buffer(chairCode, "hex").toString("utf-8");//ascii椅子编号
@@ -428,7 +429,7 @@ function broadcast(data, sock) {
             allBody = "";
         }
 
-        if (packageType == "14") {
+        if (packageType == "14") {//关闭充电
             var chairSuccess = gatewayMessage.substring(24, 26);//椅子操作后返回的类型
             var chairCode = gatewayMessage.substring(8, 24);//16进制椅子编号
             var chairCodeAsc = new Buffer(chairCode, "hex").toString("utf-8");//ascii椅子编号
@@ -443,7 +444,7 @@ function broadcast(data, sock) {
             allBody = "";
         }
 
-        if (packageType == "15") {
+        if (packageType == "15") {//设置强度为强
             var chairSuccess = gatewayMessage.substring(24, 26);//椅子操作后返回的类型
             var chairCode = gatewayMessage.substring(8, 24);//16进制椅子编号
             var chairCodeAsc = new Buffer(chairCode, "hex").toString("utf-8");//ascii椅子编号
@@ -458,7 +459,7 @@ function broadcast(data, sock) {
             allBody = "";
         }
 
-        if (packageType == "16") {
+        if (packageType == "16") {//设置强度为中
             var chairSuccess = gatewayMessage.substring(24, 26);//椅子操作后返回的类型
             var chairCode = gatewayMessage.substring(8, 24);//16进制椅子编号
             var chairCodeAsc = new Buffer(chairCode, "hex").toString("utf-8");//ascii椅子编号
@@ -473,7 +474,7 @@ function broadcast(data, sock) {
             allBody = "";
         }
 
-        if (packageType == "17") {
+        if (packageType == "17") {//设置强度为弱
             var chairSuccess = gatewayMessage.substring(24, 26);//椅子操作后返回的类型
             var chairCode = gatewayMessage.substring(8, 24);//16进制椅子编号
             var chairCodeAsc = new Buffer(chairCode, "hex").toString("utf-8");//ascii椅子编号
@@ -488,7 +489,7 @@ function broadcast(data, sock) {
             allBody = "";
         }
 
-        if (packageType == "18") {
+        if (packageType == "18") {//暂停按摩椅
             var chairSuccess = gatewayMessage.substring(24, 26);//椅子操作后返回的类型
             var chairCode = gatewayMessage.substring(8, 24);//16进制椅子编号
             var chairCodeAsc = new Buffer(chairCode, "hex").toString("utf-8");//ascii椅子编号
@@ -503,7 +504,7 @@ function broadcast(data, sock) {
             allBody = "";
         }
 
-        if (packageType == "19") {
+        if (packageType == "19") {//继续按摩椅
             var chairSuccess = gatewayMessage.substring(24, 26);//椅子操作后返回的类型
             var chairCode = gatewayMessage.substring(8, 24);//16进制椅子编号
             var chairCodeAsc = new Buffer(chairCode, "hex").toString("utf-8");//ascii椅子编号
@@ -518,7 +519,7 @@ function broadcast(data, sock) {
             allBody = "";
         }
 
-        if (packageType == "08") {
+        if (packageType == "08") {//查询设备状态
             var chairSuccess = gatewayMessage.substring(24, 26);//椅子操作后返回的类型
             var chairCode = gatewayMessage.substring(8, 24);//16进制椅子编号
             var returnMsg = new Buffer(gatewayMessage, "hex").toString("utf-8");
@@ -536,7 +537,7 @@ function broadcast(data, sock) {
             allBody = "";
         }
 
-        if (packageType == "11") {
+        if (packageType == "11") {//修改按摩椅频道
             var chairSuccess = gatewayMessage.substring(24, 26);//椅子操作后返回的类型
             var chairCode = gatewayMessage.substring(8, 24);//16进制椅子编号
             var chairCodeAsc = new Buffer(chairCode, "hex").toString("utf-8");//ascii椅子编号
@@ -552,7 +553,7 @@ function broadcast(data, sock) {
             allBody = "";
         }
 
-        if (packageType == "12") {
+        if (packageType == "12") {//修改按摩椅编号
             var chairSuccess = gatewayMessage.substring(24, 26);//椅子操作后返回的类型
             var chairCode = gatewayMessage.substring(8, 24);//16进制椅子编号
             var chairCodeAsc = new Buffer(chairCode, "hex").toString("utf-8");//ascii椅子编号
